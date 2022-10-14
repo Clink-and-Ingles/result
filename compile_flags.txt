@@ -1,0 +1,4 @@
+-I./src
+-O3
+-Wall
+-std=c++20
