@@ -19,39 +19,78 @@
 //    Author: Kevin Ingles
 //    File: Ok.hpp
 //    Description: Provides a tyoe to return from functions and easily construct
-//    a a Result type
+//    a Result type
+//    =================================
 
-#inculde < type_traits>
+#include <memory>
+#include <type_traits>
 
+/// General struct for returing Ok values for functions that initialize a
+/// Results object
 template <typename T>
 struct Ok {
-    T stored_value;
+	T stored_value;
 };
 
+/// Ownership in rust is very clear, but in C++ we have to spell it out. This
+/// class takes owndership of a pointer or reference passed. This means that the
+/// passed pointer of reference is NULL after the function call.
+///
+/// Since the oject is essentially "moved", const constructors should be
+/// disabled
 template <typename T>
 struct OwningOk : public Ok<T> {
-    OwningOk() = default;
-    OwningOk(T vale) {
-        if constexpr (std::is_pointer<T>) {
-            stored_value = new T();
-            *stored_value = *value;
-            m_mark_to_delete = true;
-        } else if constexpr (std::is_reference<T>) {
-            stored_value = new T();
-            *stored_value = value;
-            m_mark_to_delete = true;
-        }
-    }
-    OwningOk(const T& value);
-    OwningOk(T&& value);
-    OwningOk(const Ok& ok);
-    OwningOk(Ok&& ok);
-    ~OwningOk() {
-        if (m_mark_to_delete) delete stored_value;
-    }
+	using underlying_type = typename std::remove_pointer<typename std::decay<T>::value>::value;
 
-    T stored_value;
+	OwningOk()		   = default;
+	OwningOk(const T&) = delete;
 
-   private:
-    bool m_mark_to_delete;
-}
+	OwningOk(T value)
+	{
+		if constexpr (std::is_pointer<T>::value)
+		{
+			stored_value = std::make_unique<underlying_type>();
+			stored_value.reset(value);
+			value			 = nullptr;
+			m_mark_to_delete = true;
+		}
+		else if constexpr (std::is_reference<T>::value)
+		{
+			stored_value	 = std::make_unique(value);
+			&value			 = nullptr;
+			m_mark_to_delete = true;
+		}
+	}
+
+	OwningOk(T&& value)
+	{
+		if constexpr (std::is_pointer<T>::value)
+		{
+			stored_value	 = new T();
+			*stored_value	 = *value;
+			value			 = nullptr;
+			m_mark_to_delete = true;
+		}
+		else if constexpr (std::is_reference<T>::value)
+		{
+			stored_value	 = new T();
+			*stored_value	 = value;
+			&value			 = nullptr;
+			m_mark_to_delete = true;
+		}
+	}
+
+	template <typename U>
+	OwningOk(Ok<U>&& ok);	 // Check that udnerlying types are the same
+
+	~OwningOk()
+	{
+		if (m_mark_to_delete) delete stored_value;
+	}
+
+	std::unique_ptr<underlying_type> stored_value;
+
+	private:
+
+	bool m_mark_to_delete;
+};
