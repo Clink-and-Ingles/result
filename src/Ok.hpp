@@ -29,7 +29,6 @@
 /// Results object
 template <typename T>
 struct Ok {
-	T stored_value;
 };
 
 /// Ownership in rust is very clear, but in C++ we have to spell it out. This
@@ -40,57 +39,51 @@ struct Ok {
 /// disabled
 template <typename T>
 struct OwningOk : public Ok<T> {
-	using underlying_type = typename std::remove_pointer<typename std::decay<T>::value>::value;
+	using underlying_type = typename std::remove_pointer<typename std::decay<T>::type>::type;
 
-	OwningOk()		   = default;
-	OwningOk(const T&) = delete;
+	OwningOk() = default;
 
-	OwningOk(T value)
+	OwningOk(T&& value) noexcept
 	{
 		if constexpr (std::is_pointer<T>::value)
 		{
-			stored_value = std::make_unique<underlying_type>();
-			stored_value.reset(value);
+			m_stored_value = std::make_unique<underlying_type>();
+			m_stored_value.reset(value);
 			value			 = nullptr;
 			m_mark_to_delete = true;
 		}
-		else if constexpr (std::is_reference<T>::value)
+		else
 		{
-			stored_value	 = std::make_unique(value);
-			&value			 = nullptr;
-			m_mark_to_delete = true;
-		}
-	}
-
-	OwningOk(T&& value)
-	{
-		if constexpr (std::is_pointer<T>::value)
-		{
-			stored_value	 = new T();
-			*stored_value	 = *value;
-			value			 = nullptr;
-			m_mark_to_delete = true;
-		}
-		else if constexpr (std::is_reference<T>::value)
-		{
-			stored_value	 = new T();
-			*stored_value	 = value;
-			&value			 = nullptr;
+			m_stored_value	 = std::make_unique<underlying_type>(value);
 			m_mark_to_delete = true;
 		}
 	}
 
 	template <typename U>
-	OwningOk(Ok<U>&& ok);	 // Check that udnerlying types are the same
+	OwningOk(Ok<U>&& ok) noexcept : m_stored_value{ std::move(ok.m_stored_value) },
+									m_mark_to_delete{ ok.m_mark_to_delete }
+	{
+	}
 
 	~OwningOk()
 	{
-		if (m_mark_to_delete) delete stored_value;
+		if (m_mark_to_delete) m_stored_value.~unique_ptr();
 	}
 
-	std::unique_ptr<underlying_type> stored_value;
+	underlying_type& get(void) { return *m_stored_value.release(); }
+
+	underlying_type* release(void)
+	{
+		m_mark_to_delete = false;
+		return m_stored_value.release();
+	}
 
 	private:
 
+	// pointer to stored information
+	std::unique_ptr<underlying_type> m_stored_value;
+
+	// We take ownership of the pointer, it is our responsibility to delete it if it never is
+	// released
 	bool m_mark_to_delete;
 };
