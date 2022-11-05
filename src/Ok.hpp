@@ -49,41 +49,25 @@ struct OwningOk : public Ok<T> {
 		{
 			m_stored_value = std::make_unique<underlying_type>();
 			m_stored_value.reset(value);
-			value			 = nullptr;
-			m_mark_to_delete = true;
+			value = nullptr;
 		}
-		else
-		{
-			m_stored_value	 = std::make_unique<underlying_type>(value);
-			m_mark_to_delete = true;
-		}
+		else { m_stored_value = std::make_unique<underlying_type>(value); }
 	}
 
 	template <typename U>
-	OwningOk(Ok<U>&& ok) noexcept : m_stored_value{ std::move(ok.m_stored_value) },
-									m_mark_to_delete{ ok.m_mark_to_delete }
+	OwningOk(Ok<U>&& ok) noexcept : m_stored_value{ std::move(ok.m_stored_value) }
 	{
 	}
 
-	~OwningOk()
-	{
-		if (m_mark_to_delete) m_stored_value.~unique_ptr();
-	}
+	// The smart pointer takes care of the deallocation
+	~OwningOk() {}
 
 	underlying_type& get(void) { return *m_stored_value.release(); }
 
-	underlying_type* release(void)
-	{
-		m_mark_to_delete = false;
-		return m_stored_value.release();
-	}
+	underlying_type* release(void) { return m_stored_value.release(); }
 
 	private:
 
 	// pointer to stored information
 	std::unique_ptr<underlying_type> m_stored_value;
-
-	// We take ownership of the pointer, it is our responsibility to delete it if it never is
-	// released
-	bool m_mark_to_delete;
 };

@@ -21,7 +21,14 @@
 //    Description: Checks to make sure all the template mahic in Ok.hpp works
 //    =================================
 //
-//    TODO: Build out tests more, and check all type information
+#ifdef __clang__
+#  pragma message("Hello from clang compilation")
+#elif defined(__GNUC__)
+#  pragma message("Hello from GNU compilation")
+#endif
+
+#define STRINGIFY(x) #x
+#define COMPILE_TIME_PRINT(x) _Pragma(STRINGIFY(message(x)))
 
 #include <iostream>
 #include <string_view>
@@ -47,7 +54,7 @@ constexpr auto type_name()
 {
 	// Note this only works for
 	std::string_view name = __PRETTY_FUNCTION__;
-#ifdef __GNUC___
+#ifdef __GNUC__
 	std::string_view prefix = "constexpr auto type_name() [with T = ";
 #elif defined(__clang__)
 	std::string_view prefix = "auto type_name() [T = ";
@@ -60,7 +67,6 @@ constexpr auto type_name()
 
 void check_OwningOk_create_for_value(void);
 void check_OwningOk_create_for_pointer(void);
-void check_OwningOk_for_proper_desctruction(void);
 void check_OwningOk_for_proper_get_and_release(void);
 
 int main()
@@ -78,27 +84,28 @@ void check_OwningOk_create_for_value(void)
 		x = 1.0;
 
 	OwningOk<std::vector<double> > my_ok(std::move(vec));
+	COMPILE_TIME_PRINT("\e[01;32mNo error compiling construction of OwningOk from value\e[0m")
 	PrintLn("Construct OwningOk from value: \e[01;32m[Passed]\e[0m");
+	PrintLn("End of value function");
 }
 
 void check_OwningOk_create_for_pointer(void)
 {
+	PrintLn("Beginning of pointer function");
 	std::vector<double>* vec = new std::vector<double>(10);
 	for (auto& x : *vec)
 		x = 1.0;
 
 	OwningOk<std::vector<double>*> my_ok(std::move(vec));
+	COMPILE_TIME_PRINT("\e[01;32mNo error compiling construction of OwningOk from pointer\e[0m");
 	PrintLn("Construct OwningOk from pointer: \e[01;32m[Passed]\e[0m");
-	delete vec;
 }
 
 void check_OwningOk_for_proper_get_and_release(void)
 {
-	int			  n = 10;
-	OwningOk<int> my_ok_1(std::move(n));
-	const auto	  n_ref = my_ok_1.get();
-	// PrintLn(type_name<decltype(n)>());
-	int* n_ptr = my_ok_1.release();
-	// PrintLn(type_name<decltype(n_ptr)>());
+	int							n = 10;
+	OwningOk<int>				my_ok_1(std::move(n));
+	[[maybe_unused]] const auto n_ref = my_ok_1.get();
+	[[maybe_unused]] int*		n_ptr = my_ok_1.release();
 	PrintLn("OwningOk does proper get and release: \e[01;32m[Passed]\e[0m");
 }
