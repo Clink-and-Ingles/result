@@ -13,24 +13,31 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+//  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+//  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+//  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+//  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+//  SOFTWARE OR THE USE OF OTHER DEALINGS IN THE SOFTWARE
+//
 //    =================================
 //    Author: Kevin Ingles
 //    File: Ok.hpp
-//    Description: Provides a tyoe to return from functions and easily construct
-//    a Result type
+//    Description: Data structure which return the Ok type of result data structure
+//    Note: This is duplicated in/from Err.hpp.
+//          Some may have qualms with this duplication, however, this duplication
+//          is intentional to facilitate documentation
 //    =================================
 
 #include <memory>
 #include <type_traits>
 
-// Ownership in rust is very clear, but in C++ we have to spell it out. This
-// class takes owndership of a pointer or reference passed. This means that the
-// passed pointer of reference is NULL after the function call.
-//
-// Since the oject is essentially "moved", const constructors should be
-// disabled
+// Ownership in rust is very clear, but in C++ we have to spell it out.
+// This class takes ownership of a pointer or reference passed.
+// This means that the passed pointer of reference is NULL after the function call.
 
-/// OwningOk takes a value or poitner and moves as a r-value.
+/// OwningOk takes a value or pointer and moves as a r-value.
 /// It is then assumed that the instance of OwningOk is the only owner of the passed object.
 /// To ensure this, be sure to use smart pointers in your code to make it obvious to the compiler
 /// and the user whether the passed objects should owned our not.
@@ -96,3 +103,5 @@ class NonowningOk
 	// pointer to stored information
 	std::weak_ptr<underlying_type> m_stored_value;
 };
+
+using Ok = NonowningOk<void>;

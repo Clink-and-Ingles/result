@@ -18,6 +18,12 @@
 ##  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 ##  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ##  SOFTWARE OR THE USE OF OTHER DEALINGS IN THE SOFTWARE
+## 
+##  ==================================
+##  Author: Kevi Ingles
+##  File: Makefile (for testing results data struct)
+##  Description: Facilitate running tests for results project
+##  ==================================
 
 SRC = ./src/
 TST = ./tests/
@@ -43,9 +49,11 @@ clean:
 
 .PHONY: test_all
 
-test_all: test_1 test_2
-test_1: $(OBJ)NonOwningOk_test.x
-test_2: $(OBJ)OwningOk_test.x
+test_all: test_OwningOk test_NonowningOk test_OwningErr test_NonowningErr
+test_OwningOk: $(OBJ)NonOwningOk_test.x
+test_NonowningOk: $(OBJ)OwningOk_test.x
+test_OwningErr: $(OBJ)NonOwningErr_test.x
+test_NonowningErr: $(OBJ)OwningErr_test.x
 
 $(OBJ)%.x: $(OBJ)%.o
 	# $(info $(CC) $(CXXFLAGS) -MMD -o $@ $^ $(TST_INC))
@@ -56,4 +64,7 @@ $(TST_OBJ_FILES): $(TST_FILES)
 	$(CC) $(CXXFLAGS) -MMD -c -o $@ $< $(TST_INC)
 
 run_test_all:
-	$(TST_EXE)
+	$(OBJ)NonOwningOk_test.x
+	$(OBJ)OwningOk_test.x
+	$(OBJ)NonOwningErr_test.x
+	$(OBJ)OwningErr_test.x
