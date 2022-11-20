@@ -111,7 +111,7 @@ SortIncludes: CaseInsensitive
 SortUsingDeclarations: true
 
 SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: true
+SpaceAfterTemplateKeyword: false
 SpaceAroundPointerQualifiers: Default
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: true

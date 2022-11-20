@@ -31,6 +31,11 @@
 #include <memory>
 #include <type_traits>
 
+/// Generic empty struct that can be used to zero initialize the Err classes
+template<typename T>
+struct VoidErr {
+};
+
 // Ownership in rust is very clear, but in C++ we have to spell it out.
 // This class takes ownership of a pointer or reference passed.
 // This means that the passed pointer of reference is NULL after the function call.
@@ -39,7 +44,7 @@
 /// It is then assumed that the instance of OwningErr is the only owner of the passed object.
 /// To ensure this, be sure to use smart pointers in your code to make it obvious to the compiler
 /// and the user whether the passed objects should owned our not.
-template <typename T>
+template<typename T>
 class OwningErr
 {
 	public:
@@ -59,10 +64,12 @@ class OwningErr
 		else { m_stored_value = std::make_unique<underlying_type>(value); }
 	}
 
-	template <typename U>
+	template<typename U>
 	OwningErr(OwningErr<U>&& ok) noexcept : m_stored_value{ std::move(ok.m_stored_value) }
 	{
 	}
+
+	OwningErr(VoidErr<T>) noexcept : m_stored_value{} {}
 
 	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.release(); }
 
@@ -77,7 +84,7 @@ class OwningErr
 /// NonowningErr only takes by reference and only stores a reference.
 /// The user should ensure that the lifetime of the object does not terminate before the instance
 /// of the NonowningErr has terminated, otherwise you would be accessing a nullptr
-template <typename T>
+template<typename T>
 class NonowningErr
 {
 	public:
@@ -89,10 +96,12 @@ class NonowningErr
 
 	NonowningErr(std::shared_ptr<T> ptr) noexcept : m_stored_value{ std::weak_ptr(ptr) } {}
 
-	template <typename U>
+	template<typename U>
 	NonowningErr(NonowningErr<U>&& ok) noexcept : m_stored_value{ std::weak_ptr(ok.m_stored_value) }
 	{
 	}
+
+	NonowningErr(VoidErr<T>) noexcept : m_stored_value{} {}
 
 	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.lock().get(); }
 

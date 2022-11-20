@@ -37,20 +37,20 @@
 #include <iostream>
 #include <string_view>
 
-template <typename... Args>
+template<typename... Args>
 void Print(Args&&... args)
 {
 	((std::cout << std::forward<Args>(args) << " "), ...);
 }
 
-template <typename... Args>
+template<typename... Args>
 void PrintLn(Args&&... args)
 {
 	((std::cout << std::forward<Args>(args) << " "), ...);
 	std::cout << "\n";
 }
 
-template <typename T>
+template<typename T>
 constexpr auto type_name(T)
 {
 	// Note this only works for
