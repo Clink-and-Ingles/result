@@ -38,7 +38,10 @@ TST_EXE = $(patsubst $(TST)%.cpp,$(OBJ)%.x,$(TST_FILES))
 # $(info $(TST_OBJ_FILES))
 # $(info $(TST_EXE))
 
+# TODO: Make rules for gcc builds in clang++ builds and the corresponding
+# 		command/flags for it
 CC = g++
+# CC = clang++ -std=c++20
 OPT = -O3
 WOPT = -Wall -Werror -Wextra -Wpedantic -Wshadow -Wconversion
 FOPT = -fanalyzer
