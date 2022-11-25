@@ -1,5 +1,3 @@
-//
-//    result is a header-only implementation of the rust result crate
 //    Copyright (C) 2022  Liam Clink and Kevin Ingles
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -157,8 +155,8 @@ class NonowningResult
 
 	NonowningResult(OwningResult<T, E> other)
 		: m_is_ok{ other.m_is_ok },
-		  m_value{ std::move(other.m_value) },
-		  m_err{ std::move(other.m_err) }
+		  m_value{ std::shared_ptr<T>(std::move(other.m_value)) },
+		  m_err{ std::shared_ptr<E>(std::move(other.m_err)) }
 	{
 	}
 
