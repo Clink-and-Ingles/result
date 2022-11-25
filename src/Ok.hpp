@@ -30,6 +30,9 @@
 //          is intentional to facilitate documentation
 //    =================================
 
+#ifndef OL_OK_HPP
+#define OL_OK_HPP
+
 #include <memory>
 #include <type_traits>
 
@@ -112,3 +115,5 @@ class NonowningOk
 	// pointer to stored information
 	std::weak_ptr<underlying_type> m_stored_value;
 };
+
+#endif

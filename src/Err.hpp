@@ -28,6 +28,9 @@
 //        is intentional to facilitate documentation
 //  ==================================
 
+#ifndef OL_ERR_HPP
+#define OL_ERR_HPP
+
 #include <memory>
 #include <type_traits>
 
@@ -112,3 +115,5 @@ class NonowningErr
 };
 
 using Err = NonowningErr<void>;
+
+#endif

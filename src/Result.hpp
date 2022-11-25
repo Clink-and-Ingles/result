@@ -20,6 +20,9 @@
 // =================================
 //
 
+#ifndef OL_RESULT_HPP
+#define OL_RESULT_HPP
+
 #include <functional>
 #include <memory>
 #include <optional>
@@ -166,3 +169,5 @@ class NonowningResult
 	NonowningOk<T>	m_value;
 	NonowningErr<E> m_err;
 };
+
+#endif
