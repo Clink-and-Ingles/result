@@ -35,7 +35,7 @@
 #include <type_traits>
 
 /// Generic empty struct that can be used to zero initialize the Err classes
-template<typename T>
+template<typename E>
 struct VoidErr {
 };
 
@@ -47,18 +47,18 @@ struct VoidErr {
 /// It is then assumed that the instance of OwningErr is the only owner of the passed object.
 /// To ensure this, be sure to use smart pointers in your code to make it obvious to the compiler
 /// and the user whether the passed objects should owned our not.
-template<typename T>
+template<typename E>
 class OwningErr
 {
 	public:
 
-	using underlying_type = typename std::remove_pointer<typename std::decay<T>::type>::type;
+	using underlying_type = typename std::remove_pointer<typename std::decay<E>::type>::type;
 
 	OwningErr() = default;
 
-	OwningErr(T&& value) noexcept
+	OwningErr(E&& value) noexcept
 	{
-		if constexpr (std::is_pointer<T>::value)
+		if constexpr (std::is_pointer<E>::value)
 		{
 			m_stored_value = std::make_unique<underlying_type>();
 			m_stored_value.reset(value);
@@ -72,7 +72,7 @@ class OwningErr
 	{
 	}
 
-	OwningErr(VoidErr<T>) noexcept : m_stored_value{} {}
+	OwningErr(VoidErr<E>) noexcept : m_stored_value{} {}
 
 	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.release(); }
 
@@ -87,17 +87,19 @@ class OwningErr
 /// NonowningErr only takes by reference and only stores a reference.
 /// The user should ensure that the lifetime of the object does not terminate before the instance
 /// of the NonowningErr has terminated, otherwise you would be accessing a nullptr
-template<typename T>
+template<typename E>
 class NonowningErr
 {
 	public:
 
+	friend OwningErr<E>;
+
 	// TODO: Implement for reference, but make sure to reference count some_how
-	using underlying_type = typename std::remove_pointer<typename std::decay<T>::type>::type;
+	using underlying_type = typename std::remove_pointer<typename std::decay<E>::type>::type;
 
 	NonowningErr() = default;
 
-	NonowningErr(std::shared_ptr<T> ptr) noexcept : m_stored_value{ std::weak_ptr(ptr) } {}
+	NonowningErr(std::shared_ptr<E> ptr) noexcept : m_stored_value{ std::weak_ptr(ptr) } {}
 
 	template<typename U>
 	NonowningErr(NonowningErr<U>&& ok) noexcept : m_stored_value{ std::weak_ptr(ok.m_stored_value) }
