@@ -74,7 +74,7 @@ class OwningErr
 
 	OwningErr(VoidErr<E>) noexcept : m_stored_value{} {}
 
-	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.release(); }
+	underlying_type& get(void) { return *m_stored_value.release(); }
 
 	[[nodiscard]] underlying_type* release(void) { return m_stored_value.release(); }
 
@@ -106,9 +106,11 @@ class NonowningErr
 	{
 	}
 
-	NonowningErr(VoidErr<T>) noexcept : m_stored_value{} {}
+	NonowningErr(OwningErr<E>&& err) noexcept : m_stored_value{ std::weak_ptr(std::make_shared(err.m_stored_value)) } {}
 
-	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.lock().get(); }
+	NonowningErr(VoidErr<E>) noexcept : m_stored_value{} {}
+
+	underlying_type& get(void) { return *m_stored_value.lock().get(); }
 
 	private:
 

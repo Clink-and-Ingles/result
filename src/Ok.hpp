@@ -76,7 +76,7 @@ class OwningOk
 
 	OwningOk(VoidOk<T>) noexcept : m_stored_value{} {}
 
-	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.release(); }
+	underlying_type& get(void) { return *m_stored_value.release(); }
 
 	[[nodiscard]] underlying_type* release(void) { return m_stored_value.release(); }
 
@@ -94,6 +94,8 @@ class NonowningOk
 {
 	public:
 
+	friend OwningOk<T>;
+
 	// TODO: Implement for reference, but make sure to reference count some_how
 	using underlying_type = typename std::remove_pointer<typename std::decay<T>::type>::type;
 
@@ -106,9 +108,11 @@ class NonowningOk
 	{
 	}
 
+	NonowningOk(OwningOk<T>&& ok) noexcept : m_stored_value{ std::weak_ptr(std::make_shared(ok.m_stored_value)) } {}
+
 	NonowningOk(VoidOk<T>) noexcept : m_stored_value{} {}
 
-	[[nodiscard]] underlying_type& get(void) { return *m_stored_value.lock().get(); }
+	underlying_type& get(void) { return *m_stored_value.lock().get(); }
 
 	private:
 
