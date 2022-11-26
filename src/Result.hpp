@@ -26,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <range>
 #include <type_traits>
 
 #include "Err.hpp"
@@ -50,80 +51,143 @@ class OwningResult
 
 	public:
 
-	OwningResult(OwningOk<T> ok)
-		: m_is_ok{ true },
-		  m_value{ ok },
-		  m_err{ VoidErr<E>() }
+	OwningResult(OwningOk<T>&& ok) noexcept : m_is_ok{ true },
+											  m_value{ std::move(ok) },
+											  m_err{ VoidErr<E>() }
 	{
 	}
 
-	OwningResult(OwningErr<T> err)
-		: m_is_ok{ false },
-		  m_value{ VoidOk<T>() },
-		  m_err{ err }
+	OwningResult(OwningErr<E>&& err) noexcept : m_is_ok{ false },
+												m_value{ VoidOk<T>() },
+												m_err{ std::move(err) }
 	{
 	}
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok
-	// Returns true OwningResult is OwningOk
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok
+	/// Returns true if `OwningResult<T, E>` has `OwningOk<T> != VoidOk<T>`
 	[[nodiscard]] bool is_ok() { return m_is_ok; }
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok_and
-	// Returns true if the result if OwningOk and the value inside of it matches a predicate
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok_and
+	/// Returns true if the result is `OwningOk<T>` and the value inside of it matches a predicate
 	[[nodiscard]] bool is_ok_and(std::function<bool(T&)> func)
 	{
 		if (m_is_ok && func(m_value.get())) return true;
 		else return false;
 	}
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err
-	// Returns true OwningResult is OwningErr
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err
+	/// Returns true `OwningResult<T, E>` has `OwningErr<E> != VoidErr<E>`
 	[[nodiscard]] bool is_err() { return !m_is_ok; }
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok_and
-	// Returns true if the result if OwningErr and the value inside of it matches a predicate
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok_and
+	/// Returns true if the result is `OwningErr<E>` and the value inside of it matches a predicate
 	[[nodiscard]] bool is_err_and(std::function<bool(T&)> func)
 	{
 		if (!m_is_ok && func(m_err.get())) return true;
 		else return false;
 	}
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.ok
-	// Converts from OwningResult to std::option<T>
-	// Consumes instance of OwningOk<T>, discarding the error
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.ok
+	/// Converts from `OwningResult<T, E>` to `std::option<T>`
+	/// Consumes instance of `OwningOk<T>`, discarding the error
 	[[nodiscard]] std::optional<T> ok()
 	{
 		if (m_is_ok) return std::optional<T>(m_value.release());
 		else return std::nullopt;
 	}
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.err
-	// Converts from OwningResult to std::option<E>
-	// Consumes instance of OwningOk<E>, discarding the error
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.err
+	/// Converts from `OwningResult<T, E>` to `std::option<E>`
+	/// Consumes instance of `OwningErr<E>`, discarding the error
 	[[nodiscard]] std::optional<T> err()
 	{
 		if (!m_is_ok) return std::optional<T>(m_err.release());
 		else return std::nullopt;
 	}
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.as_ref
-	// Converts from OwningResult to std::option<E>
-	// Consumes instance of OwningOk<E>, discarding the error
-	// This also fulfills the requirements for Results<T, E>::as_mut function
-	[[nodiscard]] NonowningResult<T, E> as_ref() { return NonowningResult<T, E>(*this); }
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.as_ref
+	/// Converts from `OwningResult<T, E>` to `NonowningResult<T, E>`
+	/// This also fulfills the requirements for `Results<T, E>::as_mut` function
+	[[nodiscard]] NonowningResult<T, E> as_ref() noexcept { return NonowningResult<T, E>(*this); }
 
-	// https://doc.rust-lang.org/std/result/enum.Result.html#method.map
-	// Maps a OwningResult<T, E> to a OwningResult<U, E> by applying a function to a Ok value,
-	// leaving the Err value untouched
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.map
+	/// Maps a `OwningResult<T, E>` to a `OwningResult<U, E>` by applying a function to a
+	/// `OwningOk<T>` value, leaving the Err value untouched
 	template<typename U>
-	[[nodiscard]] OwningResult<U, E> map(std::function<U(T&)> func)
+	[[nodiscard]] OwningResult<U, E> map(std::function<U(T&)>&& func)
 	{
 		if (m_is_ok)
 		{
-			auto new_ok = OwninOk<U>(func(m_value.get()));
-			return OwningResult<U, E>(new_ok);
+			auto new_ok = OwninOk<U>(*std::move(func(m_value.get())));
+			return OwningResult<U, E>(std::move(new_ok));
 		}
 		else { return OwningResult<U, E>(m_err); }
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.map_or
+	/// Maps generic type `T` to `U`, or returns the default value for `T` if it fails
+	/// Arguments passed to `map_or` are eagerly evaluated
+	template<typename U>
+	[[nodiscard]] U map_or(U default_value, std::function<U(T&)>&& func)
+	{
+		if (m_is_ok) return func(m_value.get());
+		else return default_value;
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.map_or_else
+	/// Maps generic type `T` to `U`, or returns the default value for `T` if it fails
+	/// Arguments passed to `map_or_else` are eagerly evaluated
+	template<typename U>
+	[[nodiscard]] U map_or_else(std::function<U(E&)>&& default_mapper, std::function<U(T&)>&& func)
+	{
+		if (m_is_ok) return func(m_value.get());
+		else return default_mapper(m_err.get());
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.map
+	/// Maps a `OwningResult<T, E>` to a `OwningResult<T, F>` by applying a function to a
+	/// `OwningErr<E>` value, leaving the Err value untouched
+	template<typename F>
+	[[nodiscard]] OwningResult<T, F> map_err(std::function<F(E&)>&& func)
+	{
+		if (!m_is_ok)
+		{
+			auto new_err = OwninErr<F>(*std::move(func(m_err.get())));
+			return OwningResult<T, F>(std::move(new_err));
+		}
+		else { return OwningResult<T, F>(m_value); }
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.inspect
+	/// Calls the provide function with a reference to the contained `OwningOk<T>`
+	/// In general, this call should not be used to create a new `OwningResult<T, E>`
+	/// or `NonwningResult<T, E>` type
+	template<typename ReturnType>
+	OwningResult<T, E>& inspect(std::function<ReturnType(OwningOk<T>&)> func)
+	{
+		if (m_is_ok) func(m_value);
+		return *this;
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.inspect_err
+	/// Calls the provide function with a reference to the contained `OwningErr<E>`
+	/// In general, this call should not be used to create a new `OwningResult<T, E>`
+	/// or `NonwningResult<T, E>` type
+	template<typename ReturnType>
+	OwningResult<T, E>& inspect_err(std::function<ReturnType(OwningOk<T>&)> func)
+	{
+		if (!m_is_ok) func(m_value);
+		return *this;
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.iter
+	/// Returns true if `T` is a container with `std::ranges` constraint
+	/// Note: This deviates from Rust implementation, as this will most likely be used for range-based
+	/// loops
+	bool has_range()
+	{
+		if constexpr (std::ranges::range<T>) return true;
+		else return false;
 	}
 
 	private:
@@ -156,10 +220,9 @@ class NonowningResult
 	{
 	}
 
-	NonowningResult(OwningResult<T, E> other)
-		: m_is_ok{ other.m_is_ok },
-		  m_value{ std::shared_ptr<T>(std::move(other.m_value)) },
-		  m_err{ std::shared_ptr<E>(std::move(other.m_err)) }
+	NonowningResult(OwningResult<T, E>&& other) noexcept : m_is_ok{ other.m_is_ok },
+														   m_value{ std::move(other.m_value) },
+														   m_err{ std::move(other.m_err) }
 	{
 	}
 
