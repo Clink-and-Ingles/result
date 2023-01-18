@@ -26,9 +26,10 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <range>
+#include <ranges>
 #include <type_traits>
 
+#include "Assertions.hpp"
 #include "Err.hpp"
 #include "Ok.hpp"
 
@@ -52,12 +53,14 @@ class OwningResult
 	public:
 
 	OwningResult(OwningOk<T>&& ok) noexcept : m_is_ok{ true },
+											  m_is_consumed{ false },
 											  m_value{ std::move(ok) },
 											  m_err{ VoidErr<E>() }
 	{
 	}
 
 	OwningResult(OwningErr<E>&& err) noexcept : m_is_ok{ false },
+												m_is_consumed{ false },
 												m_value{ VoidOk<T>() },
 												m_err{ std::move(err) }
 	{
@@ -92,7 +95,12 @@ class OwningResult
 	/// Consumes instance of `OwningOk<T>`, discarding the error
 	[[nodiscard]] std::optional<T> ok()
 	{
-		if (m_is_ok) return std::optional<T>(m_value.release());
+		if (m_is_consumed) return std::nullopt;
+		if (m_is_ok)
+		{
+			m_is_consumed = true;
+			return std::optional<T>(m_value.release());
+		}
 		else return std::nullopt;
 	}
 
@@ -101,7 +109,12 @@ class OwningResult
 	/// Consumes instance of `OwningErr<E>`, discarding the error
 	[[nodiscard]] std::optional<T> err()
 	{
-		if (!m_is_ok) return std::optional<T>(m_err.release());
+		if (m_is_consumed) return std::nullopt;
+		if (!m_is_ok)
+		{
+			m_is_consumed = true;
+			return std::optional<T>(m_err.release());
+		}
 		else return std::nullopt;
 	}
 
@@ -180,19 +193,45 @@ class OwningResult
 		return *this;
 	}
 
-	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.iter
+	/// Based on https://doc.rust-lang.org/std/result/enum.Result.html#method.iter
 	/// Returns true if `T` is a container with `std::ranges` constraint
-	/// Note: This deviates from Rust implementation, as this will most likely be used for range-based
-	/// loops
+	/// Note: This deviates from Rust implementation was return the underlying `T` contained in
+	/// a rust iterator, as this will most likely be used for range-based loops
 	bool has_range()
 	{
 		if constexpr (std::ranges::range<T>) return true;
 		else return false;
 	}
 
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.expect
+	/// Return the contaied `OwningOk<T>` value.
+	/// Consumes an instance of `OwningOk<T>`.
+	/// Function interrupts execution if `this` is instantiated with `OwningErr<E>` and return
+	/// a error message containg `message`; it is preferred for your to use `unwrap_or`,
+	/// `unwrap_of_else`, or `unwrap_of_default`.
+	T expect(const std::string_view& message)
+	{
+		ASSERT(!m_is_consumed, message);
+		return m_value.release();
+	}
+
+	/// https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap
+	/// Return the contaied `OwningOk<T>` value.
+	/// Consumes an instance of `OwningOk<T>`.
+	/// Function interrupts execution if `this` is instantiated with `OwningErr<E>`; it is
+	/// preferred for your to use `unwrap_or`, `unwrap_of_else`, or `unwrap_of_default`.
+	T unwrap()
+	{
+		ASSERT(!m_is_consumed, "");
+		return m_value.release();
+	}
+
 	private:
 
+	OwningResult() = delete;
+
 	bool		 m_is_ok;
+	bool		 m_is_consumed;
 	OwningOk<T>	 m_value;
 	OwningErr<E> m_err;
 };
